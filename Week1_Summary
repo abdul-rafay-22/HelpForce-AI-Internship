@@ -1,0 +1,15 @@
+Task 1: Pick and Place Object:
+
+In this task, the Franka manipulator was utilized to pick up and place a target cube.
+The robot was spawned at the origin (0.0, 0.0, 0.0), and the target cube (a DynamicCuboid) was placed at (0.4, 0.0, 0.02) with a custom light mass and small scale to prevent physics engine clipping.
+The RMPFlowController was used to calculate the necessary joint velocities and kinematics to reach the object safely with collision-free trajectories.
+The ArticulationAction class was imported to explicitly send float values to the parallel gripper joints (0.04 for open and 0.0 for fully clamped) independently of the arm movement.
+A while loop was used to continuously step the physics simulation frame-by-frame, and a frame-counting state machine (using if/elif logic) controlled the exact timing of the sequence: hovering, lowering, grasping, lifting, moving to the drop zone, and releasing.
+
+Task 2: Object Following:
+
+The same robot, the Franka manipulator, was spawned for this environment.
+A target DynamicCuboid was spawned and made selectable in the GUI, allowing it to be manually dragged across the environment using the viewport's Translate Gizmo.
+The cube.get_world_pose() function was used inside the main physics loop to extract the live X, Y, and Z coordinates of the target cube on every single frame.
+A Z-axis offset of 0.20 meters was added to the extracted coordinates to ensure the end-effector hovered securely above the cube rather than crashing into its center.
+The dynamically updated, offset coordinates were continuously fed into the RMPFlowController.forward() method, driving the robotic arm to recalculate its trajectory in real-time and actively track the object's movements.
