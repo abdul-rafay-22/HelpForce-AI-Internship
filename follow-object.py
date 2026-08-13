@@ -32,14 +32,6 @@ controller = RMPFlowController(name="rmpflow", robot_articulation=franka)
 world.reset()
 
 orientation = np.array([0.0, 1.0, 0.0, 0.0])
-
-print("==================================================")
-print("INTERACTIVE MODE ACTIVE!")
-print("Click the Green Cube in the viewer, press 'W' to")
-print("bring up the move tool, and drag it around!")
-print("==================================================")
-
-# 5. Interactive Tracking Loop
 while app.is_running():
     world.step(render=True)
     if not world.is_playing():
