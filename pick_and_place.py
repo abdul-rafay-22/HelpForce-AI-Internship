@@ -14,8 +14,6 @@ world.scene.add_default_ground_plane()
 franka = world.scene.add(
     Franka(prim_path="/World/Franka", name="franka", position=np.array([0.0, 0.0, 0.0]))
 )
-
-# FIXED: Smaller scale and explicit light mass to guarantee it doesn't slip
 cube = world.scene.add(
     DynamicCuboid(
         prim_path="/World/Cube",
