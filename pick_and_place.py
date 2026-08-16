@@ -42,42 +42,34 @@ while app.is_running():
         
     frames += 1
     
-    # 1. Hover and explicitly OPEN fingers wide so it doesn't knock the cube away
     if frames < 150:
         target = np.array([0.4, 0.0, 0.2]) 
         franka.gripper.apply_action(open_grip)
     
-    # 2. Go down directly over the cube (fingers still open)
     elif frames < 300:
         target = np.array([0.4, 0.0, 0.025])
         franka.gripper.apply_action(open_grip)
         
-    # 3. Pause arm movement and CLOSE fingers firmly
     elif frames < 400:
         target = np.array([0.4, 0.0, 0.025])
         franka.gripper.apply_action(close_grip)
         
-    # 4. Lift up (CONTINUE sending close command so it doesn't drop it)
     elif frames < 600:
         target = np.array([0.4, 0.0, 0.3])
         franka.gripper.apply_action(close_grip)
         
-    # 5. Move to drop zone (STILL holding close command)
     elif frames < 800:
         target = np.array([0.4, 0.4, 0.3])
         franka.gripper.apply_action(close_grip)
         
-    # 6. Lower to drop zone
     elif frames < 950:
         target = np.array([0.4, 0.4, 0.04])
         franka.gripper.apply_action(close_grip)
         
-    # 7. OPEN fingers to release
     elif frames < 1050:
         target = np.array([0.4, 0.4, 0.04])
         franka.gripper.apply_action(open_grip)
         
-    # 8. Retract up out of the way
     else:
         target = np.array([0.4, 0.4, 0.3])
         franka.gripper.apply_action(open_grip)
