@@ -1,0 +1,71 @@
+# Week 2 Report: Setting Up a Wheeled Robot in Isaac Sim
+
+## What I Was Supposed to Do
+
+This week I needed to get a wheeled robot working in Isaac Sim. The plan was to import a robot model, set up physics simulation, configure it for differential-drive control (where two independent wheels create movement), add a camera sensor, add odometry tracking, and get it moving via teleoperation. I got the first part done solid. The control and sensor parts are blocked by things I need to clarify with my mentor.
+
+## What I Actually Completed
+
+I imported a test robot called differential_base into Isaac Sim. It's a simple robot with a box body (about half a meter in each direction, weighs 10 kg) and two sphere wheels (half meter radius each, 1 kg each). The robot came from a URDF file—that's the format roboticists use to describe robot structure.
+
+The physics engine (PhysX) is running on this robot. Gravity is on. Lighting is set up. When I look at the scene hierarchy on the right side of the screen, I can see the robot structure clearly: the main robot, the chassis, the left wheel, the right wheel. Everything imports correctly and the simulation runs without crashing.
+
+## Why 0.5 and -0.5? Understanding Wheel Placement
+
+Here's something that confused me at first: why are the wheels positioned at 0.5 and -0.5? This matters more than it sounds.
+
+Think of the robot from above. The two wheels are separated by a distance—0.5 meters to one side, 0.5 meters to the other side. This distance is called the wheelbase. If the wheels are far apart, the robot makes wide, gentle turns. If they're close together, the robot spins tighter. Real robots tune this distance based on what they need to do.
+
+The 0.5 (left wheel) and -0.5 (right wheel) are on the Y-axis, which means they're offset sideways. Both wheels are aligned front-to-back, so the robot balances naturally. If one wheel was forward and one was back, the robot would be lopsided.
+
+The wheels spin around the Y-axis—imagine an axis running left-to-right through the robot. That's the rotation axis for rolling wheels. If the axis ran up-down instead, the wheels would flip like a steering wheel on a car, not roll like ground wheels. If it ran front-to-back, the wheels would fly off sideways.
+
+The wheels are defined as "continuous" joints, which means they can spin forever. If they were "limited" joints, they'd stop at some maximum rotation angle. Real wheels don't stop spinning—they roll indefinitely. So "continuous" is the only option that makes sense.
+
+## How Import Works
+
+When I imported the URDF file, Isaac Sim converted it into USD format (Unisonverse Scene Description—the format Isaac Sim uses internally). Each part of the robot became a 3D object (called a prim). Each connection became a joint. The physics engine read all the masses and geometries and set up the physics calculations.
+
+Since the URDF didn't specify how "stiff" the wheel joints should be (the resistance to bending), Isaac Sim calculated default values based on the wheel shape and mass. This works okay for simulation but might not perfectly match a real robot's wheel.
+
+Once I enabled PhysX physics on the robot, the engine started calculating realistic motion. Everything became subject to gravity and collision physics.
+
+## The Control Problem
+
+Here's where I got stuck: I need to tell the wheels to spin at specific speeds. In a normal Isaac Sim setup, there's an API to do this. But this custom build doesn't have it—or rather, the API is there but configured differently than the documentation assumes.
+
+I tried several approaches:
+- Using the standard drive command: It needs configuration parameters that weren't auto-generated
+- Directly setting wheel velocity: That attribute is read-only, like a speedometer that only reads speed but can't set it
+- Using the ROS2 bridge: Those modules aren't compiled into this build
+
+All three standard paths are blocked. I need to ask my mentor which method actually works in his custom build.
+
+## The Sensors Problem
+
+I also need to add:
+- A camera mounted on the robot that sends images somewhere
+- Odometry (tracking position by counting wheel rotations)
+
+But I don't know if these integrate through ROS2, or if they're read directly from the simulation. That's also a question for my mentor.
+
+## What's Actually Done vs. What's Pending
+
+Done (50%):
+- Robot imports cleanly from URDF
+- Physics simulation runs
+- Scene structure is correct and visible
+- Robot is stable and renderable
+- Wheel joints are accessible and ready for control
+
+Pending (50%):
+- Actual joint control (making wheels spin on command)
+- Camera sensor setup and integration
+- Odometry calculation and publishing
+- Keyboard or ROS2 teleoperation
+ 
+Three things I could'nt get are:
+
+1. What's the right way to command wheel velocities in this build?; I've tried the standard approach and it's not working. I need to know if there's a custom implementation or a different API.
+
+2. How do camera and odometry integrate? Do they go through ROS2 topics, or do I read them directly from USD?
