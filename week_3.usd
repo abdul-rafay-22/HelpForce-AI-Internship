@@ -1,0 +1,175 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    metersPerUnit = 1.0
+    upAxis = "Z"
+)
+
+def Xform "World"
+{
+    # -------------------------------------------------------------
+    # LIGHTING SETUP (Balanced sunlight + ambient skylight)
+    # -------------------------------------------------------------
+    def DistantLight "SunLight"
+    {
+        float inputs:intensity = 2500
+        float inputs:angle = 0.53
+        color3f inputs:color = (1.0, 0.95, 0.88)
+        double3 xformOp:rotateXYZ = (-45, 30, 0)
+        uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+    }
+
+    def DomeLight "SkyLight"
+    {
+        float inputs:intensity = 400
+        color3f inputs:color = (0.75, 0.88, 1.0)
+    }
+
+    # -------------------------------------------------------------
+    # GROUND PLANE (Dirt Field)
+    # -------------------------------------------------------------
+    def Mesh "GroundPlane"
+    {
+        int[] faceVertexCounts = [4]
+        int[] faceVertexIndices = [0, 1, 2, 3]
+        point3f[] points = [(-20, -15, 0), (20, -15, 0), (20, 15, 0), (-20, 15, 0)]
+        normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1), (0, 0, 1)]
+        color3f[] primvars:displayColor = [(0.28, 0.20, 0.13)]
+    }
+
+    # -------------------------------------------------------------
+    # CROP DEFINITIONS (Prototypes)
+    # -------------------------------------------------------------
+    def "Prototypes" (
+        active = false
+    )
+    {
+        def Xform "HealthyPlant_Proto"
+        {
+            def Cylinder "Stem"
+            {
+                double radius = 0.03
+                double height = 0.65
+                color3f[] primvars:displayColor = [(0.18, 0.45, 0.12)]
+                double3 xformOp:translate = (0, 0, 0.32)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+            def Sphere "Foliage_Main"
+            {
+                double radius = 0.35
+                color3f[] primvars:displayColor = [(0.12, 0.55, 0.10)]
+                double3 xformOp:scale = (1.0, 0.9, 0.75)
+                double3 xformOp:translate = (0, 0, 0.45)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+            def Sphere "Foliage_Side1"
+            {
+                double radius = 0.22
+                color3f[] primvars:displayColor = [(0.15, 0.62, 0.14)]
+                double3 xformOp:translate = (0.15, 0.1, 0.35)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+            def Sphere "Foliage_Side2"
+            {
+                double radius = 0.24
+                color3f[] primvars:displayColor = [(0.10, 0.50, 0.08)]
+                double3 xformOp:translate = (-0.15, -0.08, 0.38)
+                uniform token[] xformOpOrder = ["xformOp:translate"]
+            }
+        }
+
+        def Xform "DeadPlant_Proto"
+        {
+            def Cylinder "Stem"
+            {
+                double radius = 0.025
+                double height = 0.5
+                color3f[] primvars:displayColor = [(0.42, 0.30, 0.18)]
+                double3 xformOp:rotateXYZ = (20, 15, 0)
+                double3 xformOp:translate = (0.05, 0, 0.22)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+            }
+            def Sphere "Withered_Main"
+            {
+                double radius = 0.20
+                color3f[] primvars:displayColor = [(0.48, 0.32, 0.16)]
+                double3 xformOp:scale = (0.7, 0.6, 0.5)
+                double3 xformOp:translate = (0.12, 0.05, 0.32)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+            def Sphere "Withered_Side"
+            {
+                double radius = 0.15
+                color3f[] primvars:displayColor = [(0.38, 0.24, 0.12)]
+                double3 xformOp:scale = (0.6, 0.5, 0.4)
+                double3 xformOp:translate = (-0.08, -0.05, 0.22)
+                uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+            }
+        }
+    }
+
+    # -------------------------------------------------------------
+    # CROP ROWS (Row spacing: 1.8m, Plant spacing: 0.9m)
+    # -------------------------------------------------------------
+    
+    # --- ROW 1 (Left Outer: Healthy Crops, Y = +2.7m) ---
+    def Xform "Row_Healthy_Left"
+    {
+        def "Plant_L1" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = (-6.0, 2.7, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_L2" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = (-4.5, 2.7, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_L3" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = (-3.0, 2.7, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_L4" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = (-1.5, 2.7, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_L5" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = ( 0.0, 2.7, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_L6" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = ( 1.5, 2.7, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_L7" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = ( 3.0, 2.7, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_L8" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = ( 4.5, 2.7, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_L9" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = ( 6.0, 2.7, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+    }
+
+    # --- ROW 2 (Left Inner: Mixed Healthy & Dead, Y = +0.9m) ---
+    def Xform "Row_Mixed_Left"
+    {
+        def "Plant_ML1" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = (-6.0, 0.9, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_ML2" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = (-4.5, 0.9, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_ML3" (instanceable = true, references = </World/Prototypes/DeadPlant_Proto>)    { double3 xformOp:translate = (-3.0, 0.9, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_ML4" (instanceable = true, references = </World/Prototypes/DeadPlant_Proto>)    { double3 xformOp:translate = (-1.5, 0.9, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_ML5" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = ( 0.0, 0.9, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_ML6" (instanceable = true, references = </World/Prototypes/DeadPlant_Proto>)    { double3 xformOp:translate = ( 1.5, 0.9, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_ML7" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = ( 3.0, 0.9, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_ML8" (instanceable = true, references = </World/Prototypes/DeadPlant_Proto>)    { double3 xformOp:translate = ( 4.5, 0.9, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_ML9" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = ( 6.0, 0.9, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+    }
+
+    # =============================================================
+    # NAVIGATION LANE FOR CARTER ROBOT: Y = -0.9m to +0.9m (Center Y = 0.0)
+    # Clear driving corridor along the X-axis (-8.0m to +8.0m)
+    # =============================================================
+
+    # --- ROW 3 (Right Inner: Withered/Dead Crops, Y = -0.9m) ---
+    def Xform "Row_Dead_Right"
+    {
+        def "Plant_DR1" (instanceable = true, references = </World/Prototypes/DeadPlant_Proto>)    { double3 xformOp:translate = (-6.0, -0.9, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_DR2" (instanceable = true, references = </World/Prototypes/DeadPlant_Proto>)    { double3 xformOp:translate = (-4.5, -0.9, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_DR3" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = (-3.0, -0.9, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_DR4" (instanceable = true, references = </World/Prototypes/DeadPlant_Proto>)    { double3 xformOp:translate = (-1.5, -0.9, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_DR5" (instanceable = true, references = </World/Prototypes/DeadPlant_Proto>)    { double3 xformOp:translate = ( 0.0, -0.9, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_DR6" (instanceable = true, references = </World/Prototypes/DeadPlant_Proto>)    { double3 xformOp:translate = ( 1.5, -0.9, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_DR7" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = ( 3.0, -0.9, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_DR8" (instanceable = true, references = </World/Prototypes/DeadPlant_Proto>)    { double3 xformOp:translate = ( 4.5, -0.9, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_DR9" (instanceable = true, references = </World/Prototypes/DeadPlant_Proto>)    { double3 xformOp:translate = ( 6.0, -0.9, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+    }
+
+    # --- ROW 4 (Right Outer: Healthy Crops, Y = -2.7m) ---
+    def Xform "Row_Healthy_Right"
+    {
+        def "Plant_R1" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = (-6.0, -2.7, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_R2" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = (-4.5, -2.7, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_R3" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = (-3.0, -2.7, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_R4" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = (-1.5, -2.7, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_R5" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = ( 0.0, -2.7, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_R6" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = ( 1.5, -2.7, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_R7" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = ( 3.0, -2.7, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_R8" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = ( 4.5, -2.7, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+        def "Plant_R9" (instanceable = true, references = </World/Prototypes/HealthyPlant_Proto>) { double3 xformOp:translate = ( 6.0, -2.7, 0) uniform token[] xformOpOrder = ["xformOp:translate"] }
+    }
+}
