@@ -1,0 +1,179 @@
+A row-crop field in Isaac Sim with a Carter robot driving down the centre lane,
+a working LiDAR publishing to ROS 2, and healthy/dead crops told apart by colour
+and shape.
+
+Quick status of the Week 3 checklist:
+
+| Deliverable | Status |
+|-------------|--------|
+| Row-crop USD environment | Done |
+| Healthy / dead crops (colour + shape) | Done |
+| Carter spawning and driving | Done |
+| Wheel-velocity control | Done |
+| LiDAR on ROS 2 (`/scan`) | Done |
+| Clock on ROS 2 (`/clock`) | Done |
+| Camera on ROS 2 | Partial (see below) |
+| Odometry on ROS 2 | Not done yet |
+| Autonomous row-following | Not started — flagging this one separately |
+
+---
+
+## The environment
+
+I ended up building the field directly in USD instead of importing a downloaded
+asset. The short version of why: I spent a long time looking for a usable
+cotton/crop model and couldn't find one that worked (details at the bottom).
+Building it myself removed the licence and quality problems and let me control
+scale, spacing, and the healthy/dead look exactly.
+
+Scene layout:
+
+```
+/World
+├── SunLight, SkyLight        lighting (warm sun + cool sky fill)
+├── GroundPlane               physics ground plane (static collider)
+├── PhysicsScene
+├── Prototypes                two plant templates, referenced by the rows
+│   ├── HealthyPlant_Proto
+│   └── DeadPlant_Proto
+├── Row_Healthy_Left          Y = +2.7 m
+├── Row_Mixed_Left            Y = +0.9 m
+├── Row_Dead_Right            Y = -0.9 m
+├── Row_Healthy_Right         Y = -2.7 m
+├── carter_v1                 the robot
+└── ActionGraph               ROS 2 + drive logic
+```
+
+Numbers:
+- Row spacing: 1.8 m
+- Plant spacing in a row: 1.5 m
+- 9 plants per row, 36 total
+- Centre lane at Y = 0 kept clear for the robot
+
+For the crops I made two templates and instanced them across the rows:
+- **Healthy** — green, upright ~1.1 m stalk with angled leaves and a crown.
+- **Dead** — brown, shorter and tilted, drooping leaves, no crown.
+
+The mixed rows alternate the two so it looks like a real diseased patch. Because
+every plant just references one of the two templates, the health state is set
+per-plant by which template it points at.
+
+---
+
+## The robot
+
+I used `carter_v1` from the NVIDIA asset library and referenced it into the
+scene. It already ships with a 32-beam LiDAR (`XT_32_10Hz`) and four cameras, so
+I didn't need to bolt sensors on manually. I spawned it at the start of the
+centre lane and set its Z to about 0.3 m so it sits on the ground instead of
+clipping into it.
+
+For driving, I built this in the Action Graph:
+
+```
+On Playback Tick → Differential Controller → Articulation Controller → wheels
+```
+
+- Differential Controller: wheel radius 0.24, wheel distance 0.54, forward speed
+  set through desiredLinearVelocity.
+- Articulation Controller: pointed at `/World/carter_v1`, driving the
+  `left_wheel` and `right_wheel` joints.
+
+Forward and reverse both work (reverse is just a negative speed — the wheels are
+oriented so negative actually drives it up the lane into the field).
+
+---
+
+## Sensors / ROS 2
+
+Everything publishes through one Action Graph that shares a single tick and one
+ROS 2 context.
+
+**`/clock`** was the first thing I got working — once that showed up in
+`ros2 topic list`, I knew the ROS 2 bridge was actually connected end to end.
+
+**`/scan`** (the LiDAR) took a bit more. In 6.0.1 you can't just point the LiDAR
+helper at the sensor prim — it errors with "unknown render product." The fix was
+to add an **Isaac Create Render Product** node, set its cameraPrim to the LiDAR
+(`/World/carter_v1/chassis_link/XT_32_10Hz`), and feed its render-product output
+into the helper. After that `/scan` publishes fine while the sim is playing.
+
+Graph shape:
+
+```
+On Playback Tick ─┬─ ROS2 Publish Clock          (← ROS2 Context)
+                  ├─ Render Product → RTX Lidar Helper   (← ROS2 Context)
+                  ├─ Differential Controller → Articulation Controller
+                  └─ camera render product + camera helper  (partial)
+```
+
+---
+
+## Physics stuff I had to fix
+
+- **Robot kept falling through the floor.** The first ground was just a flat
+  mesh with no collision. Giving it a convex-hull collider made a bad thin
+  collision shape, and the rigid-body preset made the ground itself fall (robot
+  and ground dropped together, which was funny but not useful). What actually
+  worked was deleting it and using a proper physics ground plane
+  (`Create > Physics > Ground Plane`) — that's a static floor by default.
+- Keep the robot's spawn Z a bit above 0 so it doesn't start inside the ground.
+
+---
+
+## Known issues
+
+- **Camera ROS 2 publishing isn't finished.** I added the camera helper and its
+  render product but didn't fully wire/test it, and a half-connected render
+  product throws a "render product not valid" warning that can stall the graph.
+  If you just want to see what the camera sees, open a second viewport and set
+  its camera to `carter_camera_first_person` — no ROS 2 needed.
+- The `fullScan is deprecated` warning is harmless (the setting is ignored). Can
+  be turned off by unchecking Publish Full Scan.
+- The plants have no collision, so the robot won't physically bump into them —
+  fine for a driving demo, would need colliders for real crop interaction.
+- The crops are stylised, not photoreal.
+- The ground is currently plain/untextured — cosmetic, easy to fix later.
+
+---
+
+## What's next
+
+1. Finish the camera topic (`/robot/camera/image_raw`) — same render-product →
+   helper pattern as the LiDAR.
+2. Add odometry (IMU + odometry publisher → `/robot/odom`).
+3. Compare LiDAR and odometry against the Gazebo baseline.
+4. **Autonomous row-following** — detecting the row and steering to stay centred
+   is a proper separate task, not a quick add-on to the constant-speed drive.
+   Flagging this for Usman rather than half-doing it.
+5. Cosmetic: dirt material on the ground, maybe plant colliders and nicer plant
+   models.
+
+---
+
+## Why the crops are hand-built (the asset search)
+
+Keeping this here so nobody repeats the hunt:
+
+- Sketchfab "cotton" is mostly home-decor (cotton stems in vases), broken
+  photogrammetry scans, or paid Store assets. The free ones I checked were
+  either fused multi-object scenes, decorative rather than agricultural, or
+  huge (one single plant was ~880k triangles).
+- Poly Haven has no crop plant.
+- CropCraft (Romea, Apache-2.0) is a solid procedural field generator and I got
+  it installed and running, but it doesn't ship plant models and its labels are
+  crop/weed, not healthy/dead — so not the fastest route here.
+- The academic cotton repos I found either ship only textures (no mesh) or have
+  no licence at all.
+
+So I built the plants and field as USD directly. No licence risk, low poly,
+exact spacing, and easy per-plant healthy/dead control. The trade-off is the
+plants are simple/stylised rather than realistic.
+
+---
+
+## Files
+
+- `week_3.usd` — the full scene
+- `Week3_Notes.md` — this file
+- screen recording of the robot driving (attaching separately)
