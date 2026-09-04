@@ -1,0 +1,106 @@
+Approach — algorithm choice (Phase 1)
+
+The task allowed either classical CV or a lightweight learned model. **Classical CV
+was chosen**, for concrete reasons rather than default:
+
+- The detection problem is green vegetation against brown soil — separable in HSV
+  colour space with no learning required.
+- A learned detector (e.g. a small YOLO) would need a *training* set with plant
+  bounding boxes; the 180 frames here are a *validation* set labelled with
+  row-centre pixels, which is the wrong supervision for object detection and would
+  need a separate annotation effort.
+- Classical CV runs in single-digit milliseconds on the RTX 3050, leaving plenty of
+  headroom for Week 5's closed-loop control.
+
+The original Gazebo project's detection code was not available for direct review, so
+the pipeline was rebuilt from scratch rather than ported. Even had it been available,
+HSV thresholds tuned on Gazebo's flat-shaded materials would not transfer to Isaac's
+RTX-rendered colours without full recalibration — so a rebuild was the honest call.
+
+Synthetic dataset (Phase 2)
+
+Generated with Isaac Sim Replicator (`generate_dataset.py`), headless.
+
+- **180 frames** = 5 rows × 12 positions along each row × 3 lighting levels
+  (sun intensity 1200 / 1600 / 2200).
+- **Ground truth without manual labelling.** Because the field is procedural, every
+  row's world position is known. For each frame the row centreline is projected
+  through the camera's real view/projection matrices into pixel space — that
+  projected column is the ground-truth row centre. No hand-labelling.
+- **Lateral drift added.** A camera sitting perfectly on its row every frame gives a
+  constant ground truth (image centre) and a useless validation set — a detector that
+  always outputs "centre" would score perfectly. To make the set meaningful, the
+  camera is offset sideways off the row by a random ±0.0–0.6 m per frame, so the row
+  appears off-centre and ground truth varies (≈514–766 px across the drift range).
+- Output: `frames/NNNN.png`, `manifest.csv` (frame → row, drift, lighting,
+  ground-truth pixel), and `overlay_preview/` frames with the ground-truth line drawn
+  for visual verification.
+
+**Not varied:** row curvature. The field has straight rows only, so curved-row
+robustness is untested and is listed as a limitation.
+
+Detection pipeline (Phase 3)
+
+`detect_row.py` — HSV threshold → column-histogram row selection.
+
+- **HSV bounds calibrated on the actual frames**, not guessed. A helper
+  (`calibrate_hsv.py`) sampled vegetation vs soil pixels from the rendered frames and
+  reported the green cluster (hue ≈ 47–61) cleanly separated from soil (hue ≈ 0–25).
+  Final bounds: lower `[42, 75, 49]`, upper `[66, 255, 255]`.
+- **Row selection.** An early version averaged all green columns across the width.
+  That worked when the row was centred but failed badly on drifted frames: with a
+  neighbouring row also in view, the average was dragged toward it. Replaced with a
+  column-intensity histogram of the green mask over the lower (near-field) region;
+  each visible row is a peak, and the pipeline picks the peak nearest the expected
+  position (image centre for a following camera), then refines with a local centroid.
+- Output: detected row-centre pixel and a detection flag. Overlays saved with the
+  detected centre (red) and image centre (cyan) for inspection.
+- Two modes: `batch` (over the dataset → `detections.csv`) and `live` (subscribes to
+  `/robot/camera/image_raw`, overlays detection in real time for the recording).
+
+Baseline metrics (Phase 4)
+
+Scored `pred_center_px` against `gt_center_px` (`evaluate.py`), over all 180 frames.
+
+| Metric | Value |
+|---|---|
+| Detection rate | 180 / 180 = 100 % |
+| Mean offset error | 105 px |
+| Median offset error | 66 px |
+| 90th-percentile error | 198 px |
+| Max error | 727 px |
+| Processing time | 2.64 ms/frame (≈ 380 FPS) |
+
+**Error by lateral drift** — this is the important slice:
+
+| \|drift\| (m) | frames | mean err (px) | median (px) |
+|---|---|---|---|
+| 0.00 | 26 | 3.9 | 2.5 |
+| 0.15 | 42 | 41.9 | 40.6 |
+| 0.35 | 42 | 94.3 | 81.5 |
+| 0.60 | 70 | 186.8 | 167.4 |
+
+Lighting had almost no effect (mean 88–127 px across all three levels), which
+confirms the HSV threshold is robust to illumination. Error is driven almost entirely
+by drift.
+
+What works, what doesn't (Phase 5)
+
+**Works well:**
+- On-row and small-drift frames (≤ 0.15 m): error within ~40 px, well inside usable
+  range for a controller.
+- Illumination robustness: performance flat across the tested lighting range.
+- Speed: ~380 FPS leaves large headroom for closed-loop control.
+
+**Degrades / known limitations:**
+- **Large drift (≥ 0.35 m):** error climbs sharply. At 0.6 m the target row sits near
+  the frame edge and a *neighbouring* row can be closer to image centre, so
+  "peak nearest centre" picks the wrong row. This is a genuine single-frame ambiguity;
+  the standard fix is temporal tracking (using the previous frame's estimate as the
+  prior — the `prior_cx` hook is already in the detector), which belongs with Week 5's
+  controller rather than in a per-frame detector.
+- **Curvature untested:** the field has straight rows only.
+- **Sparse dead plants:** the generated field came out predominantly healthy, so the
+  dead/wilting failure mode (brown plants invisible to a green mask) is described
+  analytically rather than measured. A field variant with more dead plants would be
+  needed to quantify it.
