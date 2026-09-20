@@ -1,0 +1,77 @@
+# Week 6 — Phase 0 Progress Report
+**Intern:** Abdul Rafay
+**Track:** Wheeled Robot Simulation — Agriculture Row-Following (Isaac Sim)
+**Mentor:** Arslan Ansar · **Reporting to:** Usman Ali
+**Date:** 20 September 2026
+
+---
+
+## Summary
+
+Phase 0 (Week 5 carry-over) is functionally closed. The perception and
+control pipeline was rebuilt after the Week 6 stage migration broke the
+robot's drive graph, and a straight-row closed-loop baseline was logged
+with real success-rate and path-deviation numbers. An end-of-row stop
+behaviour has been implemented on top of the controller as the first step
+toward headland turning (deferred to a later week).
+
+---
+
+## What was completed
+
+### 1. Perception pipeline (rebuilt + calibrated)
+- Temporal-tracking `perception_bridge_node.py` running in `balance` mode
+  (corridor-centering via left/right green-mask balance).
+- Added a `balance_bias` parameter to correct camera-mount asymmetry so a
+  centered robot reads offset ≈ 0. Calibrated at the field's true aisle
+  centre (x = 0).
+- Camera publishing confirmed at ~17 Hz on `/robot/camera/image_raw`.
+
+### 2. Drive graph (rebuilt from scratch)
+The Week 6 stage migration left the robot's Action Graph broken. It was
+rebuilt in full — camera, odometry, and differential drive chains. Root
+causes found and fixed (documented for future reference):
+- The render product was pointed at the LiDAR prim (`XT_32_10hz`) instead
+  of the RGB camera, producing black frames — repointed to the camera.
+- The scene had no light; a Distant Light was added.
+- Differential Controller received `dt = 0` (delta-time input unwired) and
+  had its linear-velocity input wired from the Break-3-Vector Z component
+  instead of X — both corrected.
+- Odometry and camera chains re-verified: `/odom` ~38 Hz, camera ~17 Hz.
+
+### 3. Straight-row closed-loop baseline (logged)
+Closed-loop run on the straight-row field, robot starting at the middle
+aisle (x = 0), 10 m run:
+
+| Metric | Result |
+|---|---|
+| Result | **SUCCESS** (completed 10 m run) |
+| Max path deviation | 0.284 m |
+| Mean path deviation | 0.092 m |
+| Fail threshold | 0.6 m (never approached) |
+
+Controller: PD, kp = 0.004, kd = 0.001, linear speed 0.4 m/s.
+Logged via `test_logger_node.py` → `analyze_results.py`.
+
+### 4. End-of-row stop (implemented, testing in progress)
+Added a latched end-of-row stop to `row_follower_controller.py`:
+distinguishes a brief mid-aisle detection loss (hold, resume) from a
+sustained loss (row has ended → latch and stop). This is the trigger point
+the future headland-turn behaviour will fire from. Threshold tuning against
+the field's sparse patches is in progress.
+
+---
+
+## Known issues / notes
+- Scene green-mask density is lower than earlier runs (~0.02 vs ~0.12),
+  making detection flicker near the threshold; being addressed via light
+  intensity and a lower `min_mask_frac`. Does not affect the logged
+  baseline above.
+- Perception and control are tuned for straight rows (1.8 m spacing).
+  Curved rows and uneven spacing untested — planned as edge-case scenarios.
+
+## Files in this commit
+- `perception_bridge_node.py` — temporal-tracking perception + `balance_bias`
+- `row_follower_controller.py` — PD controller + latched end-of-row stop
+- `test_logger_node.py`, `analyze_results.py` — evaluation tools
+- `week6_results_baseline.csv` — logged baseline result
