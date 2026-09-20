@@ -1,0 +1,3 @@
+run_label,result,duration_sec,max_deviation_m,mean_deviation_m,per_tick_log
+baseline_straight_1,FAIL_TIMEOUT,90.49,0.0000,0.0000,week6_run_logs/baseline_straight_1.csv
+baseline_straight_1,SUCCESS,58.50,0.2841,0.0917,week6_run_logs/baseline_straight_1.csv
